@@ -1,37 +1,126 @@
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.*;
 import java.sql.*;
-import java.io.*;
-public class jdbc
-{
-    public static void main(String args[])
-    {
-        try
-        {
+
+public class inputjdbc extends JFrame {
+    private JTextField idField, nameField, addressField;
+    private JButton insertButton, prevButton, nextButton;
+    private JLabel resultLabel;
+    private Connection con;
+    private ResultSet rs;
+
+    public inputjdbc() {
+        setTitle("JDBC Input Example");
+        setSize(400, 300);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setLayout(new FlowLayout());
+
+        idField = new JTextField(10);
+        nameField = new JTextField(10);
+        addressField = new JTextField(10);
+
+        insertButton = new JButton("Insert");
+        prevButton = new JButton("Previous");
+        nextButton = new JButton("Next");
+
+        resultLabel = new JLabel("Result: ");
+
+        add(new JLabel("ID:"));
+        add(idField);
+        add(new JLabel("Name:"));
+        add(nameField);
+        add(new JLabel("Address:"));
+        add(addressField);
+        add(insertButton);
+        add(prevButton);
+        add(nextButton);
+        add(resultLabel);
+
+        insertButton.addActionListener(new InsertAction());
+        prevButton.addActionListener(new PrevAction());
+        nextButton.addActionListener(new NextAction());
+
+        try {
             Class.forName("com.mysql.jdbc.Driver").newInstance();
-            Connection con=DriverManager.getConnection("jdbc:mysql://localhost:3306/test","root","root");
+            con = DriverManager.getConnection("jdbc:mysql://localhost:3306/test", "root", "root");
+            loadFirstRecord();
+        } catch (Exception e) {
+            resultLabel.setText("Error: " + e.getMessage());
+        }
+    }
 
-            BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
-            System.out.println("Enter the Records in the Database : ");
-            int id = Integer.parseInt(br.readLine());
-            String n = br.readLine();
-            String a = br.readLine();
-            PreparedStatement psmt = con.prepareStatement("insert into emp values(?,?,?)");
-            psmt.setInt(1,id);
-            psmt.setString(2,n);
-            psmt.setString(3,a);
-            psmt.execute();
-            System.out.println("Records Entered in the Database!!");
-            
-            System.out.println("\n");
-
+    private void loadFirstRecord() {
+        try {
             Statement stmt = con.createStatement();
-            ResultSet rs = stmt.executeQuery("select * from emp");
-            while(rs.next())
-            System.out.println(rs.getInt(1)+" "+rs.getString(2)+" "+rs.getString(3));
-            con.close();
+            rs = stmt.executeQuery("SELECT * FROM emp");
+            if (rs.next()) {
+                displayRecord();
+            } else {
+                resultLabel.setText("No records found.");
+            }
+        } catch (SQLException e) {
+            resultLabel.setText("Error: " + e.getMessage());
         }
-        catch(Exception e)
-        {
-            System.out.println(e);
+    }
+
+    private void displayRecord() throws SQLException {
+        idField.setText(String.valueOf(rs.getInt(1)));
+        nameField.setText(rs.getString(2));
+        addressField.setText(rs.getString(3));
+    }
+
+    private class InsertAction implements ActionListener {
+        public void actionPerformed(ActionEvent e) {
+            try {
+                int id = Integer.parseInt(idField.getText());
+                String name = nameField.getText();
+                String address = addressField.getText();
+                PreparedStatement psmt = con.prepareStatement("INSERT INTO emp VALUES (?, ?, ?)");
+                psmt.setInt(1, id);
+                psmt.setString(2, name);
+                psmt.setString(3, address);
+                psmt.execute();
+                resultLabel.setText("Inserted record.");
+                loadFirstRecord();
+            } catch (Exception ex) {
+                resultLabel.setText("Error: " + ex.getMessage());
+            }
         }
+    }
+
+    private class PrevAction implements ActionListener {
+        public void actionPerformed(ActionEvent e) {
+            try {
+                if (rs.previous()) {
+                    displayRecord();
+                } else {
+                    resultLabel.setText("No previous record.");
+                }
+            } catch (SQLException ex) {
+                resultLabel.setText("Error: " + ex.getMessage());
+            }
+        }
+    }
+
+    private class NextAction implements ActionListener {
+        public void actionPerformed(ActionEvent e) {
+            try {
+                if (rs.next()) {
+                    displayRecord();
+                } else {
+                    resultLabel.setText("No next record.");
+                }
+            } catch (SQLException ex) {
+                resultLabel.setText("Error: " + ex.getMessage());
+            }
+        }
+    }
+
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(() -> {
+            inputjdbc frame = new inputjdbc();
+            frame.setVisible(true);
+        });
     }
 }
