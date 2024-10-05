@@ -42,7 +42,7 @@ public class inputjdbc extends JFrame {
         nextButton.addActionListener(new NextAction());
 
         try {
-            Class.forName("com.mysql.jdbc.Driver").newInstance();
+            Class.forName("com.mysql.jdbc.Driver");
             con = DriverManager.getConnection("jdbc:mysql://localhost:3306/test", "root", "root");
             loadFirstRecord();
         } catch (Exception e) {
@@ -52,7 +52,7 @@ public class inputjdbc extends JFrame {
 
     private void loadFirstRecord() {
         try {
-            Statement stmt = con.createStatement();
+            Statement stmt = con.createStatement(ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
             rs = stmt.executeQuery("SELECT * FROM emp");
             if (rs.next()) {
                 displayRecord();
@@ -76,13 +76,21 @@ public class inputjdbc extends JFrame {
                 int id = Integer.parseInt(idField.getText());
                 String name = nameField.getText();
                 String address = addressField.getText();
+
                 PreparedStatement psmt = con.prepareStatement("INSERT INTO emp VALUES (?, ?, ?)");
                 psmt.setInt(1, id);
                 psmt.setString(2, name);
                 psmt.setString(3, address);
+
                 psmt.execute();
+                psmt.close(); // Close statement after execution
+
                 resultLabel.setText("Inserted record.");
-                loadFirstRecord();
+                clearFields();  // Clear fields after insertion
+                loadFirstRecord();  // Reload records after insertion
+
+            } catch (SQLIntegrityConstraintViolationException ex) {
+                resultLabel.setText("ID must be unique: " + ex.getMessage());
             } catch (Exception ex) {
                 resultLabel.setText("Error: " + ex.getMessage());
             }
@@ -115,6 +123,12 @@ public class inputjdbc extends JFrame {
                 resultLabel.setText("Error: " + ex.getMessage());
             }
         }
+    }
+
+    private void clearFields() {
+        idField.setText("");
+        nameField.setText("");
+        addressField.setText("");
     }
 
     public static void main(String[] args) {
